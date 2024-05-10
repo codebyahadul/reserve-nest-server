@@ -72,6 +72,30 @@ async function run() {
       res.send(result)
     })
 
+    // get single data for update booking date 
+    app.get('/update-date/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const options = {
+        projection: { _id: 0,}
+      }
+      const result = await bookingsCollection.findOne(query, options)
+      res.send(result)
+    })
+
+    //update booking date 
+    app.patch('/update-date/:id', async(req, res) => {
+      const id = req.params.id;
+      const updateDate = req.body;
+      const filter = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          booking_date: updateDate.booking_date
+        }
+      }
+      const result = await bookingsCollection.updateOne(filter, updateDoc)
+      res.send(result)
+    }) 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
