@@ -34,6 +34,7 @@ async function run() {
 
     const roomsCollection = client.db('serveNest').collection('rooms')
     const bookingsCollection = client.db('serveNest').collection('bookings')
+    const reviewCollection = client.db('serveNest').collection('reviews')
 
     // get all the rooms
     app.get('/rooms', async (req, res) => {
@@ -117,6 +118,17 @@ async function run() {
       const result = await bookingsCollection.updateOne(filter, updateDoc)
       res.send(result)
     }) 
+
+    // reviews related api 
+
+    // post review 
+    app.post('/reviews', async(req, res) => {
+      const reviewData = req.body;
+      const result = await reviewCollection.insertOne(reviewData)
+      res.send(result)
+    })
+
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
