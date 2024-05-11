@@ -56,6 +56,20 @@ async function run() {
       res.send(result)
     })
 
+    // update availability
+    app.patch('/update-status/:id', async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
+      const filter = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          availability: updateData.availability
+        }
+      }
+      const result = await roomsCollection.updateOne(filter, updateDoc);
+      res.send(result)
+    })
+
     // get the specific user bookings data
     app.get('/my-booking/:email', async(req, res) => {
       const booking_email = req.params.email;
@@ -82,15 +96,22 @@ async function run() {
       const result = await bookingsCollection.findOne(query, options)
       res.send(result)
     })
+    // get single data for review booking room 
+    app.get('/review/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await bookingsCollection.findOne(query)
+      res.send(result)
+    })
 
     //update booking date 
-    app.patch('/update-date/:id', async(req, res) => {
+    app.put('/update-date/:id', async(req, res) => {
       const id = req.params.id;
       const updateDate = req.body;
       const filter = {_id: new ObjectId(id)}
       const updateDoc = {
         $set: {
-          booking_date: updateDate.booking_date
+          booking_date: updateDate.update_date
         }
       }
       const result = await bookingsCollection.updateOne(filter, updateDoc)
