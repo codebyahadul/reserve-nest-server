@@ -17,6 +17,20 @@ app.use(cors(
 app.use(express.json())
 app.use(cookieParser())
 
+// custom middleware
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: 'Unauthorized' })
+  }
+  jwt.verify(token, process.env.TOKEN_SECRETE, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Unauthorized access" })
+    }
+    req.user = decoded;
+    next()
+  })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ifklbg0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -92,7 +106,11 @@ async function run() {
     })
 
     // get the specific user bookings data
-    app.get('/my-booking/:email', async (req, res) => {
+    app.get('/my-booking/:email', verifyToken, async (req, res) => {
+      console.log('user token ', req.params.email, "token user", req.user?.email);
+      if(req.params.email !== req.user?.email){
+        return res.status(403).send('Forbidden')
+      }
       const email = req.params.email;
       const query = {booking_email: email}
       const result = await bookingsCollection.find(query).toArray();
