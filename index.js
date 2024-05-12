@@ -1,5 +1,7 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser')
 const cors = require('cors');
 require('dotenv').config()
 const app = express()
@@ -8,11 +10,12 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(cors(
   {
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173', 'https://reserve-nest.firebaseapp.com', 'https://reserve-nest.web.app'],
     credentials: true
   }
 ))
 app.use(express.json())
+app.use(cookieParser())
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ifklbg0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -35,7 +38,24 @@ async function run() {
     const roomsCollection = client.db('serveNest').collection('rooms')
     const bookingsCollection = client.db('serveNest').collection('bookings')
     const reviewCollection = client.db('serveNest').collection('reviews')
+    // auth related api
 
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.TOKEN_SECRETE, { expiresIn: '365d' })
+      res
+        .cookie('token', token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none'
+        })
+        .send({ success: true })
+    })
+    app.post('/logout', async (req, res) => {
+      res
+        .clearCookie('token', { maxAge: 0 })
+        .send({ success: true })
+    })
     // get all the rooms
     app.get('/rooms', async (req, res) => {
       const result = await roomsCollection.find().toArray()
@@ -61,7 +81,7 @@ async function run() {
     app.patch('/update-status/:id', async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const updateDoc = {
         $set: {
           availability: updateData.availability
@@ -72,44 +92,44 @@ async function run() {
     })
 
     // get the specific user bookings data
-    app.get('/my-booking/:email', async(req, res) => {
-      const booking_email = req.params.email;
-      const query = {booking_email}
+    app.get('/my-booking/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = {booking_email: email}
       const result = await bookingsCollection.find(query).toArray();
       res.send(result)
     })
 
     // delete a booking data 
-    app.delete('/my-booking/:id', async(req, res) => {
+    app.delete('/my-booking/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const result = await bookingsCollection.deleteOne(filter)
       res.send(result)
     })
 
     // get single data for update booking date 
-    app.get('/update-date/:id', async(req, res) => {
+    app.get('/update-date/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const options = {
-        projection: { _id: 0,}
+        projection: { _id: 0, }
       }
       const result = await bookingsCollection.findOne(query, options)
       res.send(result)
     })
     // get single data for review booking room 
-    app.get('/review/:id', async(req, res) => {
+    app.get('/review/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await bookingsCollection.findOne(query)
       res.send(result)
     })
 
     //update booking date 
-    app.put('/update-date/:id', async(req, res) => {
+    app.put('/update-date/:id', async (req, res) => {
       const id = req.params.id;
       const updateDate = req.body;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const updateDoc = {
         $set: {
           booking_date: updateDate.update_date
@@ -117,14 +137,20 @@ async function run() {
       }
       const result = await bookingsCollection.updateOne(filter, updateDoc)
       res.send(result)
-    }) 
+    })
 
     // reviews related api 
 
     // post review 
-    app.post('/reviews', async(req, res) => {
+    app.post('/reviews', async (req, res) => {
       const reviewData = req.body;
       const result = await reviewCollection.insertOne(reviewData)
+      res.send(result)
+    })
+
+    //get review data 
+    app.get('/reviews', async (req, res) => {
+      const result = await reviewCollection.find().toArray()
       res.send(result)
     })
 
