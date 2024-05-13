@@ -42,7 +42,11 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+};
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -58,11 +62,7 @@ async function run() {
       const user = req.body;
       const token = jwt.sign(user, process.env.TOKEN_SECRETE, { expiresIn: '365d' })
       res
-        .cookie('token', token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'none'
-        })
+        .cookie('token', token, cookieOptions)
         .send({ success: true })
     })
     app.post('/logout', async (req, res) => {
@@ -76,6 +76,21 @@ async function run() {
       res.send(result)
     })
 
+    // filter rooms data 
+    app.post('/rooms/filter', async (req, res) => {
+      const { minPrice, maxPrice } = req.body;
+      // Construct the MongoDB query based on the provided price range
+      const query = {};
+      if (minPrice !== undefined && maxPrice !== undefined) {
+        query.price_per_night = { $gte: parseInt(minPrice), $lte: parseInt(maxPrice) };
+      } else if (minPrice !== undefined) {
+        query.price_per_night = { $gte: parseInt(minPrice) };
+      } else if (maxPrice !== undefined) {
+        query.price_per_night = { $lte: parseInt(maxPrice) };
+      }
+      const result = await roomsCollection.find(query).toArray()
+      res.send(result)
+    })
     // get single rooms for see room details
     app.get('/rooms/:id', async (req, res) => {
       const id = req.params.id;
@@ -92,10 +107,10 @@ async function run() {
     })
 
     // update availability
-    app.patch('/update-status/:id', async (req, res) => {
-      const id = req.params.id;
+    app.patch('/update-status/:title', async (req, res) => {
+      const title = req.params.title;
       const updateData = req.body;
-      const filter = { _id: new ObjectId(id) }
+      const filter = { room_title: title }
       const updateDoc = {
         $set: {
           availability: updateData.availability
@@ -107,12 +122,11 @@ async function run() {
 
     // get the specific user bookings data
     app.get('/my-booking/:email', verifyToken, async (req, res) => {
-      console.log('user token ', req.params.email, "token user", req.user?.email);
-      if(req.params.email !== req.user?.email){
+      if (req.params.email !== req.user?.email) {
         return res.status(403).send('Forbidden')
       }
       const email = req.params.email;
-      const query = {booking_email: email}
+      const query = { booking_email: email }
       const result = await bookingsCollection.find(query).toArray();
       res.send(result)
     })
@@ -163,12 +177,23 @@ async function run() {
     app.post('/reviews', async (req, res) => {
       const reviewData = req.body;
       const result = await reviewCollection.insertOne(reviewData)
+      // increase total review count
+      const updateTotalReview = await roomsCollection.updateOne({
+        room_title: reviewData.room_title
+      },
+        {
+          $inc: {
+            total_review: 1
+          }
+        }
+      )
       res.send(result)
     })
 
     //get review data 
     app.get('/reviews', async (req, res) => {
-      const result = await reviewCollection.find().toArray()
+      const query = {currentTime: -1}
+      const result = await reviewCollection.find().sort(query).toArray()
       res.send(result)
     })
 
