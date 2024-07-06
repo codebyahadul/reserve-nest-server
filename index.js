@@ -33,8 +33,6 @@ const verifyToken = async (req, res, next) => {
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ifklbg0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -49,15 +47,10 @@ const cookieOptions = {
 };
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-
-    // await client.connect();
-
     const roomsCollection = client.db('serveNest').collection('rooms')
     const bookingsCollection = client.db('serveNest').collection('bookings')
     const reviewCollection = client.db('serveNest').collection('reviews')
     // auth related api
-
     app.post('/jwt', async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.TOKEN_SECRETE, { expiresIn: '365d' })
@@ -170,9 +163,7 @@ async function run() {
       const result = await bookingsCollection.updateOne(filter, updateDoc)
       res.send(result)
     })
-
     // reviews related api 
-
     // post review 
     app.post('/reviews', async (req, res) => {
       const reviewData = req.body;
@@ -196,9 +187,6 @@ async function run() {
       const result = await reviewCollection.find().sort(query).toArray()
       res.send(result)
     })
-
-
-    // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
@@ -207,7 +195,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
 
 app.get('/', (req, res) => {
   res.send('Hello from Serve Nest server...')
